@@ -1,0 +1,643 @@
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { FaSearch, FaChalkboardTeacher, FaBook, FaUsers, FaCalendarAlt, FaUserShield } from "react-icons/fa";
+
+function Home() {
+    const backgroundImageUrl = "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80";
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [showDashboard, setShowDashboard] = useState(false);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [popularSearches, setPopularSearches] = useState([
+        "Math P1 timetable",
+        "Mr. Smith schedule",
+        "Science classes",
+        "Primary 2 subjects",
+        "Monday timetable"
+    ]);
+    const [activeStat, setActiveStat] = useState(null);
+    const [showStatDetails, setShowStatDetails] = useState(false);
+
+    // Simulated database (replace with actual API calls)
+    const database = {
+        classes: [
+            { id: 1, name: "Primary 1", teacher: "Mr. BAHATH", subjects: ["Math", "English"], schedule: "Mon-Wed-Fri 8-10AM" },
+            { id: 2, name: "Primary 2", teacher: "Mr. PASCAL", subjects: ["Science", "History"], schedule: "Tue-Thu 9-11AM" },
+            { id: 3, name: "Primary 3", teacher: "Mr.NOEL ", subjects: ["Geography", "Art"], schedule: "Mon-Wed 1-3PM" },
+        ],
+        subjects: [
+            { id: 1, name: "Mathematics", code: "MATH101", teacher: "Mr. NIYIKFASHA", description: "Basic arithmetic and problem solving" },
+            { id: 2, name: "English", code: "ENG101", teacher: "Mrs. FLODUARD", description: "Reading, writing and comprehension" },
+            { id: 3, name: "Science", code: "SCI101", teacher: "Mr. DUSABIMANA", description: "Introduction to biology and physics" },
+        ],
+        teachers: [
+            { id: 1, name: "Mr. ERINEST", email: "ERINEST@school.com", subjects: ["Math"], qualifications: "M.Ed Mathematics" },
+            { id: 2, name: "Mrs.FRODUARD", email: "FLODUARD@school.com", subjects: ["English", "History"], qualifications: "B.A English" },
+            { id: 3, name: "Mr. PASCAL", email: "PASCAL@school.com", subjects: ["Science", "Geography"], qualifications: "M.Sc Physics" },
+        ],
+        timetable: [
+            { id: 1, class: "Primary 1", day: "Monday", period1: "Math (Mr. BAHATH)", period2: "English (Mrs.BAHATH)" },
+            { id: 2, class: "Primary 2", day: "Monday", period1: "Science (Mr. NOEL)", period2: "History (Mrs. NOEL)" },
+            { id: 3, class: "Primary 1", day: "Tuesday", period1: "English (Mr.FRODUARD)", period2: "Math (Mr. FRODUARD)" },
+        ]
+    };
+
+    // Toggle admin mode
+    const toggleAdminMode = () => {
+        setIsAdmin(!isAdmin);
+    };
+
+    // Toggle dashboard
+    const toggleDashboard = () => {
+        setShowDashboard(!showDashboard);
+    };
+
+    // Handle stat click
+    const handleStatClick = (statType) => {
+        setActiveStat(statType);
+        setShowStatDetails(true);
+    };
+
+    // Search function with Google-like suggestions
+    const handleSearch = () => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+
+        const query = searchQuery.toLowerCase();
+        const results = [];
+
+        // Search through classes with relevance scoring
+        database.classes.forEach(cls => {
+            const nameMatch = cls.name.toLowerCase().includes(query) ? 3 : 0;
+            const teacherMatch = cls.teacher.toLowerCase().includes(query) ? 2 : 0;
+            const subjectMatch = cls.subjects.some(sub => sub.toLowerCase().includes(query)) ? 1 : 0;
+            
+            const relevance = nameMatch + teacherMatch + subjectMatch;
+            
+            if (relevance > 0) {
+                results.push({
+                    type: "Class",
+                    id: cls.id,
+                    name: cls.name,
+                    details: `Teacher: ${cls.teacher} | Subjects: ${cls.subjects.join(", ")} | Schedule: ${cls.schedule}`,
+                    relevance
+                });
+            }
+        });
+
+        // Search through subjects
+        database.subjects.forEach(subject => {
+            const nameMatch = subject.name.toLowerCase().includes(query) ? 3 : 0;
+            const codeMatch = subject.code.toLowerCase().includes(query) ? 2 : 0;
+            const teacherMatch = subject.teacher.toLowerCase().includes(query) ? 1 : 0;
+            
+            const relevance = nameMatch + codeMatch + teacherMatch;
+            
+            if (relevance > 0) {
+                results.push({
+                    type: "Subject",
+                    id: subject.id,
+                    name: subject.name,
+                    details: `Code: ${subject.code} | Teacher: ${subject.teacher} | ${subject.description}`,
+                    relevance
+                });
+            }
+        });
+
+        // Search through teachers
+        database.teachers.forEach(teacher => {
+            const nameMatch = teacher.name.toLowerCase().includes(query) ? 3 : 0;
+            const emailMatch = teacher.email.toLowerCase().includes(query) ? 2 : 0;
+            const subjectMatch = teacher.subjects.some(sub => sub.toLowerCase().includes(query)) ? 1 : 0;
+            
+            const relevance = nameMatch + emailMatch + subjectMatch;
+            
+            if (relevance > 0) {
+                results.push({
+                    type: "Teacher",
+                    id: teacher.id,
+                    name: teacher.name,
+                    details: `Email: ${teacher.email} | Subjects: ${teacher.subjects.join(", ")} | ${teacher.qualifications}`,
+                    relevance
+                });
+            }
+        });
+
+        // Search through timetable
+        database.timetable.forEach(entry => {
+            const classMatch = entry.class.toLowerCase().includes(query) ? 2 : 0;
+            const dayMatch = entry.day.toLowerCase().includes(query) ? 1 : 0;
+            const period1Match = entry.period1.toLowerCase().includes(query) ? 1 : 0;
+            const period2Match = entry.period2.toLowerCase().includes(query) ? 1 : 0;
+            
+            const relevance = classMatch + dayMatch + period1Match + period2Match;
+            
+            if (relevance > 0) {
+                results.push({
+                    type: "Timetable",
+                    id: entry.id,
+                    name: `${entry.class} - ${entry.day}`,
+                    details: `Period 1: ${entry.period1} | Period 2: ${entry.period2}`,
+                    relevance
+                });
+            }
+        });
+
+        // Sort by relevance
+        results.sort((a, b) => b.relevance - a.relevance);
+        setSearchResults(results.slice(0, 10)); // Limit to top 10 results
+    };
+
+    // Handle search when Enter is pressed
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
+    // Get search suggestions
+    const getSuggestions = () => {
+        if (!searchQuery.trim()) return popularSearches;
+        
+        return [
+            ...popularSearches.filter(item => 
+                item.toLowerCase().includes(searchQuery.toLowerCase())
+            ),
+            ...database.classes
+                .filter(cls => 
+                    cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    cls.teacher.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .map(cls => `${cls.name} class`),
+            ...database.subjects
+                .filter(sub => 
+                    sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    sub.code.toLowerCase().includes(searchQuery.toLowerCase()))
+                
+                .map(sub => `${sub.name} subject`),
+            ...database.teachers
+                .filter(teacher => 
+                    teacher.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                
+                .map(teacher => `${teacher.name} schedule`)
+        ].slice(0, 5);
+    };
+
+    return (
+        <div 
+            className="min-vh-100 d-flex flex-column"
+            style={{
+                background: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${backgroundImageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundAttachment: 'fixed'
+            }}
+        >
+            {/* Navigation Bar */}
+            <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+                <div className="container">
+                    <Link className="navbar-brand fw-bold d-flex align-items-center" to="/">
+                        <FaChalkboardTeacher className="me-2" />
+                        GS.KIYANZI TSS
+                    </Link>
+                    <button 
+                        className="navbar-toggler" 
+                        type="button" 
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#navbarNav"
+                    >
+                        <span className="navbar-toggler-icon"></span>
+                    </button>
+                    <div className="collapse navbar-collapse" id="navbarNav">
+                        <ul className="navbar-nav ms-auto">
+                            <li className="nav-item">
+                                <Link className="nav-link active" to="/">
+                                    <i className="bi bi-house-door me-1"></i> Home
+                                </Link>
+                            </li>
+                            {isAdmin && (
+                                <>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/Class">
+                                            <i className="bi bi-people me-1"></i> Classes
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/insert_subject">
+                                            <FaBook className="me-1" /> Subjects
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/insert_teacher">
+                                            <FaChalkboardTeacher className="me-1" /> Teachers
+                                        </Link>
+                                    </li>
+                                </>
+                            )}
+                            <li className="nav-item">
+                                <button 
+                                    className="nav-link btn btn-link" 
+                                    onClick={toggleAdminMode}
+                                >
+                                    <FaUserShield className="me-1" />
+                                    {isAdmin ? 'Admin Mode' : 'User Mode'}
+                                </button>
+                            </li>
+                            <li className="nav-item">
+                                <button 
+                                    className="nav-link btn btn-link" 
+                                    onClick={toggleDashboard}
+                                >
+                                    <i className="bi bi-speedometer2 me-1"></i> Dashboard
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Dashboard Panel */}
+            {showDashboard && (
+                <div className="container mt-3">
+                    <div className="card shadow">
+                        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 className="mb-0">System Dashboard</h5>
+                            <button 
+                                className="btn btn-sm btn-light" 
+                                onClick={toggleDashboard}
+                            >
+                                <i className="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <div className="card-body">
+                            <div className="row">
+                                <div className="col-md-3 mb-3">
+                                    <div 
+                                        className="card bg-info text-white h-100"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleStatClick('classes')}
+                                    >
+                                        <div className="card-body text-center">
+                                            <FaUsers size={24} className="mb-2" />
+                                            <h6>Total Classes</h6>
+                                            <h3>{database.classes.length}</h3>
+                                            <small>Active this term</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-md-3 mb-3">
+                                    <div 
+                                        className="card bg-success text-white h-100"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleStatClick('subjects')}
+                                    >
+                                        <div className="card-body text-center">
+                                            <FaBook size={24} className="mb-2" />
+                                            <h6>Total Subjects</h6>
+                                            <h3>{database.subjects.length}</h3>
+                                            <small>Offered currently</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-md-3 mb-3">
+                                    <div 
+                                        className="card bg-warning text-dark h-100"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleStatClick('teachers')}
+                                    >
+                                        <div className="card-body text-center">
+                                            <FaChalkboardTeacher size={24} className="mb-2" />
+                                            <h6>Total Teachers</h6>
+                                            <h3>{database.teachers.length}</h3>
+                                            <small>On staff</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-md-3 mb-3">
+                                    <div 
+                                        className="card bg-danger text-white h-100"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => handleStatClick('timetable')}
+                                    >
+                                        <div className="card-body text-center">
+                                            <FaCalendarAlt size={24} className="mb-2" />
+                                            <h6>Timetable Entries</h6>
+                                            <h3>{database.timetable.length}</h3>
+                                            <small>Scheduled this week</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Search Section */}
+            <div className="container mt-4">
+                <div className="row justify-content-center">
+                    <div className="col-md-8">
+                        <div className="position-relative">
+                            <div className="input-group">
+                                <input
+                                    type="text"
+                                    className="form-control form-control-lg border-end-0"
+                                    placeholder="Search classes, teachers, subjects, timetables..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                                />
+                                <button 
+                                    className="btn btn-primary border-start-0" 
+                                    type="button"
+                                    onClick={handleSearch}
+                                >
+                                    <FaSearch />
+                                </button>
+                            </div>
+                            
+                            {/* Search suggestions dropdown */}
+                            {isSearchFocused && (
+                                <div className="card position-absolute w-100 mt-1 shadow-lg" style={{ zIndex: 1000 }}>
+                                    <div className="card-body p-2">
+                                        {getSuggestions().length > 0 ? (
+                                            <>
+                                                <h6 className="px-2 py-1 text-muted">Suggestions</h6>
+                                                <div className="list-group list-group-flush">
+                                                    {getSuggestions().map((suggestion, index) => (
+                                                        <button
+                                                            key={index}
+                                                            className="list-group-item list-group-item-action text-start"
+                                                            onClick={() => {
+                                                                setSearchQuery(suggestion);
+                                                                handleSearch();
+                                                            }}
+                                                        >
+                                                            <FaSearch className="text-muted me-2" />
+                                                            {suggestion}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center p-2 text-muted">
+                                                No suggestions found
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                    <div className="row justify-content-center mt-3">
+                        <div className="col-md-10">
+                            <div className="card shadow">
+                                <div className="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                                    <h5 className="mb-0">Search Results</h5>
+                                    <small>{searchResults.length} results found</small>
+                                </div>
+                                <div className="card-body">
+                                    {searchResults.map((result, index) => (
+                                        <div key={index} className="mb-3 pb-2 border-bottom">
+                                            <div className="d-flex w-100 justify-content-between">
+                                                <h6 className="mb-1">
+                                                    <span className={`badge ${getBadgeColor(result.type)} me-2`}>
+                                                        {result.type}
+                                                    </span>
+                                                    <Link 
+                                                        to={`/${result.type.toLowerCase()}/${result.id}`} 
+                                                        className="text-primary"
+                                                    >
+                                                        {result.name}
+                                                    </Link>
+                                                </h6>
+                                                <small className="text-muted">Relevance: {result.relevance}/5</small>
+                                            </div>
+                                            <p className="mb-1 text-muted">{result.details}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Hero Section */}
+            <div className="flex-grow-1 d-flex align-items-center">
+                <div className="container text-center text-white py-5">
+                    <h1 className="display-3 fw-bold mb-4">
+                        Welcome to GS.KIYANZI TSS
+                    </h1>
+                    <p className="lead mb-5">
+                        Advanced timetable management with powerful search capabilities
+                    </p>
+                    <div className="d-flex justify-content-center gap-4 flex-wrap">
+                        {isAdmin && (
+                            <>
+                                <Link 
+                                    to="/insert" 
+                                    className="btn btn-light btn-lg px-4 py-2 rounded-pill shadow d-flex align-items-center"
+                                >
+                                    <i className="bi bi-people me-2"></i> Manage Classes
+                                </Link>
+                                <Link 
+                                    to="/insert_subject" 
+                                    className="btn btn-light btn-lg px-4 py-2 rounded-pill shadow d-flex align-items-center"
+                                >
+                                    <FaBook className="me-2" /> Manage Subjects
+                                </Link>
+                                <Link 
+                                    to="/insert_teacher" 
+                                    className="btn btn-light btn-lg px-4 py-2 rounded-pill shadow d-flex align-items-center"
+                                >
+                                    <FaChalkboardTeacher className="me-2" /> Manage Teachers
+                                </Link>
+                            </>
+                        )}
+                        <Link 
+                            to="/finalreport" 
+                            className="btn btn-light btn-lg px-4 py-2 rounded-pill shadow d-flex align-items-center"
+                        >
+                            <FaCalendarAlt className="me-2" /> View Timetable
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stat Details Modal */}
+            {showStatDetails && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-lg">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    {activeStat === 'classes' && 'Class Details'}
+                                    {activeStat === 'subjects' && 'Subject Details'}
+                                    {activeStat === 'teachers' && 'Teacher Details'}
+                                    {activeStat === 'timetable' && 'Timetable Details'}
+                                </h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close" 
+                                    onClick={() => setShowStatDetails(false)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                {activeStat === 'classes' && (
+                                    <div>
+                                        <h6>Total Classes: {database.classes.length}</h6>
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Class Name</th>
+                                                    <th>Teacher</th>
+                                                    <th>Subjects</th>
+                                                    <th>Schedule</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {database.classes.map(cls => (
+                                                    <tr key={cls.id}>
+                                                        <td>{cls.name}</td>
+                                                        <td>{cls.teacher}</td>
+                                                        <td>{cls.subjects.join(", ")}</td>
+                                                        <td>{cls.schedule}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                
+                                {activeStat === 'subjects' && (
+                                    <div>
+                                        <h6>Total Subjects: {database.subjects.length}</h6>
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Subject Name</th>
+                                                    <th>Code</th>
+                                                    <th>Teacher</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {database.subjects.map(sub => (
+                                                    <tr key={sub.id}>
+                                                        <td>{sub.name}</td>
+                                                        <td>{sub.code}</td>
+                                                        <td>{sub.teacher}</td>
+                                                        <td>{sub.description}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                
+                                {activeStat === 'teachers' && (
+                                    <div>
+                                        <h6>Total Teachers: {database.teachers.length}</h6>
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Subjects</th>
+                                                    <th>Qualifications</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {database.teachers.map(teacher => (
+                                                    <tr key={teacher.id}>
+                                                        <td>{teacher.name}</td>
+                                                        <td>{teacher.email}</td>
+                                                        <td>{teacher.subjects.join(", ")}</td>
+                                                        <td>{teacher.qualifications}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                
+                                {activeStat === 'timetable' && (
+                                    <div>
+                                        <h6>Total Timetable Entries: {database.timetable.length}</h6>
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Class</th>
+                                                    <th>Day</th>
+                                                    <th>Period 1</th>
+                                                    <th>Period 2</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {database.timetable.map(entry => (
+                                                    <tr key={entry.id}>
+                                                        <td>{entry.class}</td>
+                                                        <td>{entry.day}</td>
+                                                        <td>{entry.period1}</td>
+                                                        <td>{entry.period2}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    onClick={() => setShowStatDetails(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Footer */}
+            <footer className="bg-dark text-white py-4">
+                <div className="container text-center">
+                    <p className="mb-0">
+                        © {new Date().getFullYear()} GS.KIYANZI TSS - All Rights Reserved
+                    </p>
+                    <div className="mt-2">
+                        <a href="#" className="text-white mx-2"><i className="bi bi-facebook"></i></a>
+                        <a href="#" className="text-white mx-2"><i className="bi bi-twitter"></i></a>
+                        <a href="#" className="text-white mx-2"><i className="bi bi-instagram"></i></a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+}
+
+// Helper function to get badge color based on type
+function getBadgeColor(type) {
+    switch(type) {
+        case 'Class': return 'bg-primary';
+        case 'Subject': return 'bg-success';
+        case 'Teacher': return 'bg-warning text-dark';
+        case 'Timetable': return 'bg-info text-dark';
+        default: return 'bg-secondary';
+    }
+}
+
+export default Home;
